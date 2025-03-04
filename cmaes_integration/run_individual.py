@@ -14,12 +14,14 @@ import os
 import argparse
 import pathlib
 import pandas as pd
-from snn_sim.run_simulation import run
+from snn_sim_two_corners import run as run_two_corners
+from snn_sim_four_corners import run as run_four_corners
 
 ITERS = 1000
 GENOME_START_INDEX = 3
+SIMULATION = "two-corners"
 
-def run_indvididual(generation, mode, filename):
+def run_indvididual(generation, mode, filename, sim):
     """
     Run an individual from a csv file.
     
@@ -29,6 +31,7 @@ def run_indvididual(generation, mode, filename):
                        video, or both. "screen" renders the video to the screen. "video" saves a
                        video to the "./videos" folder. "both" does both of these things.
         filename (string): CSV file to look at. Should be in /data directory.
+        sim (func): What function to use to run the simulation
     """
 
     if mode == "video" or mode == "both":
@@ -42,7 +45,7 @@ def run_indvididual(generation, mode, filename):
     vid_name = filename + "_gen" + str(generation)
     vid_path = os.path.join(this_dir, "videos")
 
-    run(ITERS, genome, mode, vid_name, vid_path)
+    sim(ITERS, genome, mode, vid_name, vid_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='RL')
@@ -63,7 +66,20 @@ if __name__ == "__main__":
         type=str,
         help='what csv file to look at',
         default="default_csv.csv")
+    
+    parser.add_argument('--sim',
+                        type=str,
+                        default=SIMULATION,
+                        help='specify what simulaion to use: two-corners, four-corners')
+    args = parser.parse_args()
+
+    if args.sim == "two-corners":
+        fitness_fun = run_two_corners.run
+    elif args.sim == "four-corners":
+        fitness_fun = run_four_corners.run
+    else:
+        raise RuntimeError("Unknown simulation! Try 'two-corners' or 'four-corners'")
 
     args = parser.parse_args()
 
-    run_indvididual(args.gen, args.mode, args.filename)
+    run_indvididual(args.gen, args.mode, args.filename, fitness_fun)
