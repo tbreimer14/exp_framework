@@ -20,13 +20,14 @@ from datetime import datetime
 from pathlib import Path
 from cmaes import CMA
 import numpy as np
-from snn_sim import run_simulation
-
-SNN_INPUT_SHAPE = 36
-MEAN_ARRAY = [0.0] * SNN_INPUT_SHAPE
-NUM_ITERS = 500
+from snn_sim_two_corners import run_simulation as run_four_corners
+from snn_sim_two_corners import run_simulation as run_two_corners
 
 VERBOSE = False
+SIMULATION = "two_corners"
+INIT_FITNESS = 100
+DEFAULT_GENS = 100
+DEFAULT_SIGMA = 2
 
 GENOME_INDEX = 0
 FITNESS_INDEX = 1
@@ -34,7 +35,12 @@ FITNESS_INDEX = 1
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATE_TIME = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 
-def run_cma_es(mode, gens, sigma_val):
+SNN_INPUT_SHAPE = 36
+MEAN_ARRAY = [0.0] * SNN_INPUT_SHAPE
+NUM_ITERS = 500
+
+
+def run_cma_es(mode, gens, sigma_val, fitness_fun):
     """
     Runs the cma_es algorithm on the robot locomotion problem,
     with sin-like robot actuators. Saves a csv file to ./output
@@ -49,6 +55,7 @@ def run_cma_es(mode, gens, sigma_val):
         gens (int): How many generations to run.
         sigma_val (float): The standard deviation of the normal distribution
         used to generate new candidate solutions
+        fitness_fun (func): What fitness function to use.
     """
 
     # Generate output.csv file
@@ -67,14 +74,14 @@ def run_cma_es(mode, gens, sigma_val):
     # Init CMA
     optimizer = CMA(mean=np.array(MEAN_ARRAY), sigma=sigma_val)
 
-    best_fitness_so_far = run_simulation.FITNESS_OFFSET
+    best_fitness_so_far = INIT_FITNESS
 
     for generation in range(gens):
         solutions = []
 
         for indv_num in range(optimizer.population_size):
             x = optimizer.ask()
-            fitness = run_simulation.run(NUM_ITERS, x, "h")
+            fitness = fitness_fun(NUM_ITERS, x, "h")
             solutions.append((x, fitness))
 
         optimizer.tell(solutions)
@@ -106,7 +113,7 @@ def run_cma_es(mode, gens, sigma_val):
             vid_name = DATE_TIME + "_gen" + str(generation)
             vid_path = os.path.join(ROOT_DIR, "videos", DATE_TIME)
 
-            run_simulation.run(NUM_ITERS, best_genome, mode, vid_name, vid_path)
+            fitness_fun(NUM_ITERS, best_genome, mode, vid_name, vid_path)
 
 
 if __name__ == "__main__":
@@ -118,11 +125,20 @@ if __name__ == "__main__":
     parser.add_argument('--gens',
                         type=int,
                         help='number of generations to run',
-                        default=100)
+                        default=DEFAULT_GENS)
     parser.add_argument('--sigma',
                         type=float,
-                        default=1,
+                        default=DEFAULT_SIGMA,
                         help='sigma value for cma-es')
+    parser.add_argument('--sim',
+                        type=str,
+                        default=SIMULATION,
+                        help='specify what simulaion to use: two-corners, four-corners')
     args = parser.parse_args()
 
-    run_cma_es(args.mode, args.gens, args.sigma)
+    if args.sim == "two-corners":
+        fitness_fun = run_two_corners.run
+    elif args.sim == "four-corners":
+        fitness_fun = run_four_corners.run
+
+    run_cma_es(args.mode, args.gens, args.sigma, fitness_fun)
