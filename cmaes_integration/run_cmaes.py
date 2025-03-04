@@ -140,5 +140,7 @@ if __name__ == "__main__":
         fitness_fun = run_two_corners.run
     elif args.sim == "four-corners":
         fitness_fun = run_four_corners.run
+    else:
+        raise RuntimeError("Unknown simulation! Try 'two-corners' or 'four-corners'")
 
     run_cma_es(args.mode, args.gens, args.sigma, fitness_fun)
